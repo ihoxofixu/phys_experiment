@@ -1,6 +1,8 @@
 def deriviative_two_variables(x, y, func, var_x=True, var_y=True):
-    dev_x = (func(x + x / 100000, y) - func(x, y)) / (x / 100000) if var_x else 0
-    dev_y = (func(x, y + y / 100000) - func(x, y)) / (y / 100000) if var_y else 0
+    dx = 1e-10
+    dy = 1e-10
+    dev_x = (func(x + dx, y) - func(x, y)) / dx if var_x else 0
+    dev_y = (func(x, y + dy) - func(x, y)) / dy if var_y else 0
     return dev_x, dev_y
 
 
