@@ -1,18 +1,17 @@
-def deriviative_two_variables(x, y, func, var_x=True, var_y=True):
-    dx = 1e-10
-    dy = 1e-10
-    dev_x = (func(x + dx, y) - func(x, y)) / dx if var_x else 0
-    dev_y = (func(x, y + dy) - func(x, y)) / dy if var_y else 0
-    return dev_x, dev_y
+import sympy
 
 
-def calc_new_value(x, y, func):
-    var_x = isinstance(x, measurement)
-    var_y = isinstance(y, measurement)
-    x = x if var_x else measurement(x, 0)
-    y = y if var_y else measurement(y, 0)
-    dev_x, dev_y = deriviative_two_variables(x.value, y.value, func, var_x, var_y)
-    return measurement(func(x.value, y.value), x.error * dev_x ** 2 + y.error * dev_y ** 2, square_errors=True)
+def calc_new_value(x_var, y_var, func):
+    x_var = x_var if isinstance(x_var, measurement) else measurement(x_var, 0)
+    y_var = y_var if isinstance(y_var, measurement) else measurement(y_var, 0)
+
+    x = sympy.Symbol("x")
+    y = sympy.Symbol("y")
+    tmp_f = func(x, y)
+
+    dev_x = sympy.lambdify((x, y), sympy.diff(tmp_f, x))(x_var.value, y_var.value)
+    dev_y = sympy.lambdify((x, y), sympy.diff(tmp_f, y))(x_var.value, y_var.value)
+    return measurement(func(x_var.value, y_var.value), x_var.error * dev_x ** 2 + y_var.error * dev_y ** 2, square_errors=True)
 
 
 class measurement:
