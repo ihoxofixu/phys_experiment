@@ -70,7 +70,7 @@ class measurement:
             raise TypeError("Can only raise to power of int, float or measurement type values, not " + str(type(other)).split("'")[1])
         return calc_new_value(self, other, lambda x, y: x ** y)
 
-    def __pow__(self, other):
+    def __rpow__(self, other):
         if isinstance(other, (int, float, measurement)):
             raise TypeError("Only int, float or measurement type values can be raised to power, not " + str(type(other)).split("'")[1])
         return calc_new_value(other, self, lambda x, y: x ** y)
