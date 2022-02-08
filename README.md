@@ -1,0 +1,1 @@
+nam len' delat' labi
