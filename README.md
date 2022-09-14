@@ -5,6 +5,7 @@ This is a project for pocessing data in laboratory work in physics for mipt stud
 ## -ROUND_TO!!! 
 ## -POWER
 # TODO
+## -ADD MEASURENET TYPE LISTS TO PLOT_EXP
 ## -CONSTANTS
 ## -Xi^2 FIT
 ## -SPLIT TO DOFFERENT FILES
