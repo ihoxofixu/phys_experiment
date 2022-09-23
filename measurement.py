@@ -21,7 +21,7 @@ class measurement:
             self.value = value
             self.error = res_error
 
-    def __calc_new_value(x_var, y_var, func):
+    def __calc_new_value(self, x_var, y_var, func):
         x_var = x_var if isinstance(x_var, measurement) else measurement(x_var, 0)
         y_var = y_var if isinstance(y_var, measurement) else measurement(y_var, 0)
 
@@ -33,8 +33,9 @@ class measurement:
         dev_y = smp.lambdify((x, y), smp.diff(tmp_f, y))(x_var.value, y_var.value)
         return measurement(func(x_var.value, y_var.value), x_var.error * dev_x ** 2 + y_var.error * dev_y ** 2, square_errors=True)
 
-    def __round_to(x, digits=3):
+    def __round_to(self, digits=3):
         dec_cnt = 0
+        x = self.deepcopy()
         while abs(x.value) < 10 ** (digits - 1):
             x *= 10
             dec_cnt -= 1
@@ -48,54 +49,57 @@ class measurement:
         return "(" + val[0] + "." + val[1::] + " ± " + err[0] + "." + err[1::] + ")e" + str(dec_cnt + len(val) - 1)
 
     def __add__(self, other):
-        return __calc_new_value(self, other, lambda x, y: x + y)
+        return self.__calc_new_value(self, other, (lambda x, y: x + y))
 
     def __radd__(self, other):
-        return __calc_new_value(other, self, lambda x, y: x + y)
+        return self.__calc_new_value(other, self, (lambda x, y: x + y))
 
     def __sub__(self, other):
-        return __calc_new_value(self, other, lambda x, y: x - y)
+        return self.__calc_new_value(self, other, (lambda x, y: x - y))
 
     def __rsub__(self, other):
-        return __calc_new_value(other, self, lambda x, y: x - y)
+        return self.__calc_new_value(other, self, (lambda x, y: x - y))
 
     def __mul__(self, other):
-        return __calc_new_value(self, other, lambda x, y: x * y)
+        return self.__calc_new_value(self, other, (lambda x, y: x * y))
 
     def __rmul__(self, other):
-        return __calc_new_value(other, self, lambda x, y: x * y)
+        return self.__calc_new_value(other, self, (lambda x, y: x * y))
 
     def __truediv__(self, other):
-        return __calc_new_value(self, other, lambda x, y: x / y)
+        return self.__calc_new_value(self, other, (lambda x, y: x / y))
 
     def __rtruediv__(self, other):
-        return __calc_new_value(other, self, lambda x, y: x / y)
+        return self.__calc_new_value(other, self, (lambda x, y: x / y))
 
     def __pow__(self, other):
-        return __calc_new_value(self, other, lambda x, y: x ** y)
+        return self.__calc_new_value(self, other, (lambda x, y: x ** y))
 
     def __rpow__(self, other):
-        return __calc_new_value(other, self, lambda x, y: x ** y)
+        return self.__calc_new_value(other, self, (lambda x, y: x ** y))
 
     def __str__(self):
         return str(self.value) + " ± " + str(self.error**0.5)
 
+    def deepcopy(self):
+        return measurement(self)
+
     def view(self, digits=3):
-        print(__round_to(self, digits))
+        print(self.__round_to(digits))
 
 
 class PlotPlot:
-    def __check_exp_type(data_experimental):
+    def __check_exp_type(self, data_experimental):
         if not isinstance(data_experimental, (list, np.ndarray, pd.core.series.Series)):
             raise TypeError("data_experimental argument must be list, np.array or pd.core.series.Series, not \'" + str(type(data_experimental)).split("'")[1] + "\'")
 
-    def __check_err_type(err):
+    def __check_err_type(self, err):
         if not isinstance(err, (types.FunctionType, list, np.ndarray, pd.core.series.Series)):
             raise TypeError("error arguments must be function, list, np.array or pd.core.series.Series, not \'" + str(type(xerr)).split("'")[1] + "\'")
 
     def __init__(self, x_experimental, y_experimental, xerr=None, yerr=None):
-        __check_exp_type(x_experimental)
-        __check_exp_type(y_experimental)
+        self.__check_exp_type(x_experimental)
+        self.__check_exp_type(y_experimental)
 
         if xerr is None:
             xerr = [0 for i in range(len(x_experimental))]
@@ -107,15 +111,15 @@ class PlotPlot:
         if isinstance(yerr, (int, float)):
             yerr = [yerr for i in range(len(y_experimental))]
 
-        __check_err_type(xerr)
-        __check_err_type(yerr)
+        self.__check_err_type(xerr)
+        self.__check_err_type(yerr)
 
         if not isinstance(xerr, (types.FunctionType)) and len(x_experimental) != len(xerr):
-            raise LengthError("xerr length does not match x_experimental length")
+            raise Exception("xerr length does not match x_experimental length")
         if not isinstance(yerr, (types.FunctionType)) and len(y_experimental) != len(yerr):
-            raise LengthError("yerr length does not match y_experimental length")
+            raise Exception("yerr length does not match y_experimental length")
         if len(x_experimental) != len(y_experimental):
-            raise LengthError("y_experimental length does not match x_experimental length")
+            raise Exception("y_experimental length does not match x_experimental length")
 
         if isinstance(xerr, types.FunctionType):
             xerr = xerr(np.array(x_experimental))
@@ -132,7 +136,7 @@ class PlotPlot:
         self.xx = xx
         self.yy = yy
 
-    def __err_linear_MNK(k, b, x, y):
+    def __err_linear_MNK(self, k, b, x, y):
         Dxx = np.var(x)
         Dyy = np.var(y)
         err_k = ((Dyy / Dxx - k ** 2) / (len(x) - 2)) ** 0.5
@@ -162,7 +166,7 @@ class PlotPlot:
         if fitline:
             k_val, b_val = np.polyfit(np.array(x), np.array(y), 1)
             plt.plot(x, k_val * x + b_val, 'b-', label="y = k * x + b", color="red")
-            err_k, err_b = __err_linear_MNK(k_val, b_val, x, y)
+            err_k, err_b = self.__err_linear_MNK(k_val, b_val, x, y)
             k = measurement(k_val, err_k)
             b = measurement(b_val, err_b)
         plt.xlabel(xlbl+", " * (len(xmu) != 0)+xmu)
