@@ -7,11 +7,11 @@ import types
 
 class measurement:
     def __init__(self, value, *errors, square_errors=False):
-        if not isinstance(value, (int, float, measurement)):
+        if not isinstance(value, (int, float, measurement, np.int64)):
             raise TypeError("measurement() arguments must be \'measurement\' or numbers, not \'" + str(type(value)).split("'")[1] + "\'")
         res_error = 0
         for error in errors:
-            if not isinstance(error, (int, float)):
+            if not isinstance(error, (int, float, np.int64)):
                 raise TypeError("eroor arguments must be numbers, not \'" + str(type(error)).split("'")[1] + "\'")
             res_error += error ** (2 - square_errors)
         if isinstance(value, measurement):
@@ -103,12 +103,12 @@ class PlotPlot:
 
         if xerr is None:
             xerr = [0 for i in range(len(x_experimental))]
-        if isinstance(xerr, (int, float)):
+        if isinstance(xerr, (int, float, np.int64)):
             xerr = [xerr for i in range(len(x_experimental))]
 
         if yerr is None:
             yerr = [0 for i in range(len(y_experimental))]
-        if isinstance(yerr, (int, float)):
+        if isinstance(yerr, (int, float, np.int64)):
             yerr = [yerr for i in range(len(y_experimental))]
 
         self.__check_err_type(xerr)
