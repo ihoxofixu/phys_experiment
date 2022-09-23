@@ -180,5 +180,3 @@ class PlotPlot:
             k.view()
             b.view()
             return k, b
-        else:
-            return None, None
