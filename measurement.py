@@ -6,7 +6,17 @@ import types
 
 
 class measurement:
+    """Class measurement
+
+    Implements a value with an error and arithmetic features to work with errors.
+    Operators to be added: "+=", "-=", "*=", "/="
+    """
     def __init__(self, value, *errors, square_errors=False):
+        """
+        value         - the exact value you get from your measurers durig lab
+        errors        - all the possible errors such as instrument error, random error, etc.
+        square errors - wheather you pass errors already to the power of 2 or not
+        """
         if not isinstance(value, (int, float, measurement, np.int64)):
             raise TypeError("measurement() arguments must be \'measurement\' or numbers, not \'" + str(type(value)).split("'")[1] + "\'")
         res_error = 0
@@ -82,13 +92,26 @@ class measurement:
         return str(self.value) + " ± " + str(self.error**0.5)
 
     def deepcopy(self):
+        """
+        Returns the copy of element
+        """
         return measurement(self)
 
     def view(self, digits=3):
+        """
+        Receives the amount of significant digits and prints the value with this accuracy
+        """
         print(self.__round_to(digits))
 
 
 class PlotPlot:
+    """Class PlotPlot
+
+    Class to visualise experimental dependences.
+    Initialisation is done by passing X values and Y values with their errors
+    Right now it is only able to approximate with a line using Least Squares method
+    """
+
     def __check_exp_type(self, data_experimental):
         if not isinstance(data_experimental, (list, np.ndarray, pd.core.series.Series)):
             raise TypeError("data_experimental argument must be list, np.array or pd.core.series.Series, not \'" + str(type(data_experimental)).split("'")[1] + "\'")
@@ -98,9 +121,24 @@ class PlotPlot:
             raise TypeError("error arguments must be function, list, np.array or pd.core.series.Series, not \'" + str(type(xerr)).split("'")[1] + "\'")
 
     def __init__(self, x_experimental, y_experimental, xerr=None, yerr=None):
+        """
+        x_experimental - list of int/float/measurement/np.int64, np.array, pd.core.series.Series
+        y_experimental - list of int/float/measurement/np.int64., np.array, pd.core.series.Series
+
+        xerr(optional) - int, float, np.int64, list of int/float/np.int64, np.array, pd.core.series.Series, function
+        yerr(optional) - int, float, np.int64, list of int/float/np.int64, np.array, pd.core.series.Series, function
+
+        NOTE:
+        passing errors with X_experimental being list of measurements adds errors to values
+        passing errors as function with X_experimental being list of measurements throws Exception(I'm thinking how to avoid it smartly)
+        """
+        #checking the types of values
+        #TODO: iterate through to find non math types such as str
         self.__check_exp_type(x_experimental)
         self.__check_exp_type(y_experimental)
 
+        #checking the types of errors
+        #TODO: iterate through to find non math types such as str
         if xerr is None:
             xerr = [0 for i in range(len(x_experimental))]
         if isinstance(xerr, (int, float, np.int64)):
@@ -114,6 +152,7 @@ class PlotPlot:
         self.__check_err_type(xerr)
         self.__check_err_type(yerr)
 
+        #checking values list and value errors list to be the same size
         if not isinstance(xerr, (types.FunctionType)) and len(x_experimental) != len(xerr):
             raise Exception("xerr length does not match x_experimental length")
         if not isinstance(yerr, (types.FunctionType)) and len(y_experimental) != len(yerr):
@@ -145,8 +184,18 @@ class PlotPlot:
 
 
     def plot(self, xlbl="x", ylbl="y", xmu="", ymu="", fitline=False):
+        """
+        xlbl    - x axis label
+        ylbl    - y axis label
+        xmu     - measurenemt unit of value on the x axis
+        ymu     - measurenemt unit of value on the y axis
+        fitline - whether you want to approximate your scatter plot with a line
+
+        with fitline being true returns k and b from line y = k * x + b
+        """
         plt.figure(figsize=(15, 6))
 
+        #this is disgusting, to be changed
         x, y, xerr, yerr = [], [], [], []
         for i in range(len(self.xx)):
             x.append(self.xx[i].value)
