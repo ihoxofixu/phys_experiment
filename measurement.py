@@ -28,10 +28,10 @@ class measurement:
             self.value = value.value
             self.error = value.error + res_error
         else:
-            self.value = value
-            self.error = res_error
+            self.value = float(value)
+            self.error = float(res_error)
 
-    def __calc_new_value(x_var, y_var, func):
+    def __calc_new_value(self, x_var, y_var, func):
         x_var = x_var if isinstance(x_var, measurement) else measurement(x_var, 0)
         y_var = y_var if isinstance(y_var, measurement) else measurement(y_var, 0)
 
@@ -43,20 +43,10 @@ class measurement:
         dev_y = smp.lambdify((x, y), smp.diff(tmp_f, y))(x_var.value, y_var.value)
         return measurement(func(x_var.value, y_var.value), x_var.error * dev_x ** 2 + y_var.error * dev_y ** 2, square_errors=True)
 
-    def round_to(self, digits=3):
-        dec_cnt = 0
-        x = self.deepcopy()
-        while abs(x.value) < 10 ** (digits - 1):
-            x *= 10
-            dec_cnt -= 1
-        while abs(x.value) > 10 ** digits:
-            x /= 10
-            dec_cnt += 1
-        val = str(round(x.value))
-        err = str(round(x.error ** 0.5))
-        if len(err) < len(val):
-            err = "0" * (len(val) - len(err)) + err
-        return "(" + val[0] + "." + val[1::] + " ± " + err[0] + "." + err[1::] + ")e" + str(dec_cnt + len(val) - 1)
+    def __round_to(self, digits=3):
+        formated_value = "{:+.{}}".format(self.value, digits) if "e" in "{:+.{}}".format(self.value, digits) else "{:+.{}}".format(self.value, digits) + "e+00"
+        formated_error = "{:.{}}".format(self.error**0.5, digits) if "e" in "{:.{}}".format(self.error**0.5, digits) else "{:.{}}".format(self.error**0.5, digits) + "e+00"
+        return f"{formated_value} ± {formated_error}"
 
     def __add__(self, other):
         return self.__calc_new_value(self, other, (lambda x, y: x + y))
@@ -101,7 +91,7 @@ class measurement:
         """
         Receives the amount of significant digits and prints the value with this accuracy
         """
-        print(self.round_to(digits))
+        print(self.__round_to(digits))
 
 
 class PlotPlot:
@@ -112,15 +102,15 @@ class PlotPlot:
     Right now it is only able to approximate with a line using Least Squares method
     """
 
-    def __check_exp_type(data_experimental):
+    def __check_exp_type(self, data_experimental):
         if not isinstance(data_experimental, (list, np.ndarray, pd.core.series.Series)):
             raise TypeError("data_experimental argument must be list, np.array or pd.core.series.Series, not \'" + str(type(data_experimental)).split("'")[1] + "\'")
 
-    def __check_err_type(err):
+    def __check_err_type(self, err):
         if not isinstance(err, (types.FunctionType, list, np.ndarray, pd.core.series.Series)):
             raise TypeError("error arguments must be function, list, np.array or pd.core.series.Series, not \'" + str(type(xerr)).split("'")[1] + "\'")
 
-    def __init__(self, x_experimental, y_experimental, xerr=0, yerr=0):
+    def __init__(self, x_experimental, y_experimental, xerr=None, yerr=None):
         """
         x_experimental - list of int/float/measurement/np.int64, np.array, pd.core.series.Series
         y_experimental - list of int/float/measurement/np.int64., np.array, pd.core.series.Series
@@ -134,19 +124,23 @@ class PlotPlot:
         """
         #checking the types of values
         #TODO: iterate through to find non math types such as str
-        measurement.__check_exp_type(x_experimental)
-        measurement.__check_exp_type(y_experimental)
+        self.__check_exp_type(x_experimental)
+        self.__check_exp_type(y_experimental)
 
         #checking the types of errors
         #TODO: iterate through to find non math types such as str
+        if xerr is None:
+            xerr = [0 for i in range(len(x_experimental))]
         if isinstance(xerr, (int, float, np.int64)):
             xerr = [xerr for i in range(len(x_experimental))]
 
+        if yerr is None:
+            yerr = [0 for i in range(len(y_experimental))]
         if isinstance(yerr, (int, float, np.int64)):
             yerr = [yerr for i in range(len(y_experimental))]
 
-        measurement.__check_err_type(xerr)
-        measurement.__check_err_type(yerr)
+        self.__check_err_type(xerr)
+        self.__check_err_type(yerr)
 
         #checking values list and value errors list to be the same size
         if not isinstance(xerr, (types.FunctionType)) and len(x_experimental) != len(xerr):
@@ -161,12 +155,11 @@ class PlotPlot:
         if isinstance(yerr, types.FunctionType):
             yerr = yerr(np.array(y_experimental))
 
-        xx = []
-        yy = []
-        for i in range(len(x_experimental)):
-            xx.append(measurement(x_experimental[i], xerr[i]))
-        for i in range(len(y_experimental)):
-            yy.append(measurement(y_experimental[i], yerr[i]))
+        xx, yy = [], []
+        for val, err in zip(x_experimental, xerr):
+            xx.append(measurement(val, err))
+        for val, err in zip(y_experimental, yerr):
+            yy.append(measurement(val, err))
 
         self.xx = xx
         self.yy = yy
@@ -174,7 +167,7 @@ class PlotPlot:
     def __err_linear_MNK(self, k, b, x, y):
         Dxx = np.var(x)
         Dyy = np.var(y)
-        err_k = ((Dyy / Dxx - k ** 2) / (len(x) - 2)) ** 0.5
+        err_k = (abs(Dyy / Dxx - k ** 2) / (len(x) - 2)) ** 0.5
         err_b = err_k * (np.mean(x ** 2)) ** 0.5
         return err_k, err_b
 
@@ -191,17 +184,12 @@ class PlotPlot:
         """
         plt.figure(figsize=(15, 6))
 
-        #this is disgusting, to be changed
-        x, y, xerr, yerr = [], [], [], []
-        for i in range(len(self.xx)):
-            x.append(self.xx[i].value)
-            xerr.append(self.xx[i].error**0.5)
-            y.append(self.yy[i].value)
-            yerr.append(self.yy[i].error**0.5)
-        x = np.array(x)
-        xerr = np.array(xerr)
-        y = np.array(y)
-        yerr = np.array(yerr)
+        x, y, xerr, yerr = [np.zeros(len(self.xx)) for i in range(4)]
+        for x_el, y_el, i in zip(self.xx, self.yy, range(len(self.xx))):
+            x[i] = x_el.value
+            xerr[i] = x_el.error**0.5
+            y[i] = y_el.value
+            yerr[i] = y_el.error**0.5
 
         plt.errorbar(x, y, xerr=xerr, yerr=yerr,
                      marker="o", ms=6.5,
@@ -211,7 +199,7 @@ class PlotPlot:
         if fitline:
             k_val, b_val = np.polyfit(np.array(x), np.array(y), 1)
             plt.plot(x, k_val * x + b_val, 'b-', label="y = k * x + b", color="red")
-            err_k, err_b = measurement.__err_linear_MNK(k_val, b_val, x, y)
+            err_k, err_b = self.__err_linear_MNK(k_val, b_val, x, y)
             k = measurement(k_val, err_k)
             b = measurement(b_val, err_b)
         plt.xlabel(xlbl+", " * (len(xmu) != 0)+xmu)
