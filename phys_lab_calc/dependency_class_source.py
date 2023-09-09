@@ -120,6 +120,6 @@ class dependency:
         plt.grid(which='minor', linestyle=':')
         plt.show()
         if fitline:
-            k.view()
-            b.view()
+            print(k)
+            print(b)
             return k, b

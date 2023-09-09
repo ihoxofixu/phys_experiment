@@ -4,3 +4,4 @@ This is a project for pocessing data in laboratory work in physics for mipt stud
 ## -CONSTANTS
 ## -Xi^2 FIT
 ## -MANUAL
+## -WAIT FOR BUGS
